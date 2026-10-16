@@ -48,6 +48,8 @@ vim.keymap.set("n", "<leader>wt", require('wezterm').switch_tab.index)
 ### User command
 
 Use `:WeztermSpawn <command> <args>...` to spawn a task in a new WezTerm tab.
+Use `:WeztermSpawn` without arguments to open a new tab with WezTerm's default
+program (usually a shell).
 
 Use `:WeztermGetText` to select a pane and open its text in a scratch split.
 If Telescope is available, it provides the pane picker; otherwise the command

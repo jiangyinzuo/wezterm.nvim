@@ -1,9 +1,10 @@
 ---@text
 ---USER COMMANDS                                              *wezterm-commands*
 ---
----:WeztermSpawn {program} [args...]                              *:WeztermSpawn*
+---:WeztermSpawn [program] [args...]                              *:WeztermSpawn*
 ---    Spawn a task in a new WezTerm tab. Escape spaces in arguments with a
----    backslash, as with other Ex commands.
+---    backslash, as with other Ex commands. Without arguments, use WezTerm's
+---    default program (usually a shell).
 ---
 ---:WeztermGetText [pane_id={id}] [start_line={line}]             *:WeztermGetText*
 ---    Open pane text in a scratch split. Without pane_id, select a pane using
@@ -159,8 +160,8 @@ function wezterm.notify(title, body)
 end
 
 ---Spawn a program in wezterm
----@param program string
----@param opts wezterm.SpawnOpts
+---@param program string|nil Defaults to WezTerm's default program
+---@param opts wezterm.SpawnOpts|nil
 function wezterm.spawn(program, opts)
   opts = opts or {}
   local args = { "cli", "spawn" }
@@ -193,7 +194,10 @@ function wezterm.spawn(program, opts)
     end
   end
 
-  local emsg = "spawn " .. program .. " " .. table.concat(args, " ")
+  local emsg = "spawn "
+    .. (program or "default program")
+    .. " "
+    .. table.concat(args, " ")
   wezterm.exec(args, exit_handler(emsg))
 end
 

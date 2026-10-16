@@ -45,8 +45,16 @@ equal(notifications[#notifications], {
   "Wezterm failed to get text: pane missing", vim.log.levels.ERROR,
 })
 
+-- Exercise the real spawn implementation, including omitted program/options.
+wezterm.spawn()
+equal(process_args, { "wezterm", "cli", "spawn" })
+wezterm.spawn(nil, { pane = 0, cwd = "/tmp" })
+equal(process_args, {
+  "wezterm", "cli", "spawn", "--pane-id", "0", "--cwd", "/tmp",
+})
+
 -- Run commands through Neovim so Ex argument splitting is also exercised.
-local reads, list_calls, spawned = {}, 0, nil
+local reads, list_calls = {}, 0
 local output = "first\nsecond\n"
 local panes = {
   { pane_id = 0, tab_id = 1, workspace = "main", title = "shell" },
@@ -60,11 +68,16 @@ wezterm.list_panes = function()
   list_calls = list_calls + 1
   return panes
 end
-wezterm.spawn = function(program, opts) spawned = { program, opts } end
 wezterm.create_commands()
 
+vim.cmd("WeztermSpawn")
+equal(process_args, { "wezterm", "cli", "spawn" })
+vim.cmd("WeztermSpawn bash")
+equal(process_args, { "wezterm", "cli", "spawn", "bash" })
 vim.cmd([[WeztermSpawn printf %s hello\ world]])
-equal(spawned, { "printf", { args = { "%s", "hello world" } } })
+equal(process_args, {
+  "wezterm", "cli", "spawn", "printf", "%s", "hello world",
+})
 equal(vim.fn.getcompletion("WeztermGetText sta", "cmdline"), {
   "start_line=",
 })

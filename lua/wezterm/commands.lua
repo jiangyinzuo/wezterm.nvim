@@ -105,7 +105,7 @@ function M.setup(wezterm)
       args = vim.list_slice(command.fargs, 2),
     })
   end, {
-    nargs = "+",
+    nargs = "*",
     complete = "shellcmd",
     desc = "Spawn a task in a new WezTerm tab",
   })

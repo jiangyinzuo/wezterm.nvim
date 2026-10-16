@@ -1,8 +1,9 @@
 USER COMMANDS                                              *wezterm-commands*
 
-:WeztermSpawn {program} [args...]                              *:WeztermSpawn*
+:WeztermSpawn [program] [args...]                              *:WeztermSpawn*
     Spawn a task in a new WezTerm tab. Escape spaces in arguments with a
-    backslash, as with other Ex commands.
+    backslash, as with other Ex commands. Without arguments, use WezTerm's
+    default program (usually a shell).
 
 :WeztermGetText [pane_id={id}] [start_line={line}]             *:WeztermGetText*
     Open pane text in a scratch split. Without pane_id, select a pane using
@@ -90,8 +91,8 @@ wezterm.spawn({program}, {opts})                                 *wezterm.spawn*
     Spawn a program in wezterm
 
     Parameters: ~
-        {program}  (string)
-        {opts}     (wezterm.SpawnOpts)
+        {program}  (string|nil) Defaults to WezTerm's default program
+        {opts}     (wezterm.SpawnOpts|nil)
 
 
 wezterm.split_pane.vertical({opts})                *wezterm.split_pane.vertical*
