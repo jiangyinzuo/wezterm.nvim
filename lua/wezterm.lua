@@ -1,3 +1,21 @@
+---@text
+---USER COMMANDS                                              *wezterm-commands*
+---
+---:WeztermSpawn {program} [args...]                              *:WeztermSpawn*
+---    Spawn a task in a new WezTerm tab. Escape spaces in arguments with a
+---    backslash, as with other Ex commands.
+---
+---:WeztermGetText [pane_id={id}] [start_line={line}]             *:WeztermGetText*
+---    Open pane text in a scratch split. Without pane_id, select a pane using
+---    Telescope when available, otherwise vim.ui.select. Cancel to do nothing.
+---    start_line defaults to 0 (the terminal screen); negative values include
+---    scrollback. Pane IDs must be non-negative integers.
+--->
+---    :WeztermGetText pane_id=3 start_line=-200
+---    :WeztermGetText start_line=-200
+---<
+---    Set create_commands=false in setup() to disable both commands.
+
 local fmt = string.format
 
 local wezterm = {
@@ -420,23 +438,25 @@ function wezterm.zoom_pane(pane, opts)
   wezterm.exec(args, exit_handler("zoom pane"))
 end
 
----@param opts wezterm.GetTextOpts
+---@param opts wezterm.GetTextOpts|nil
+---@return string|nil
 function wezterm.get_text(opts)
-  local args = {}
+  opts = opts or {}
+  local args = { "cli", "get-text" }
 
   if opts.pane_id then
     table.insert(args, "--pane-id")
-    table.insert(args, opts.pane_id)
+    table.insert(args, tostring(opts.pane_id))
   end
 
   if opts.start_line then
     table.insert(args, "--start-line")
-    table.insert(args, opts.start_line)
+    table.insert(args, tostring(opts.start_line))
   end
 
   if opts.end_line then
     table.insert(args, "--end-line")
-    table.insert(args, opts.end_line)
+    table.insert(args, tostring(opts.end_line))
   end
 
   if opts.escapes then
@@ -654,14 +674,7 @@ end
 
 ---@private
 function wezterm.create_commands()
-  vim.api.nvim_create_user_command(
-    "WeztermSpawn",
-    "lua require('wezterm').spawn(<f-args>)",
-    {
-      nargs = "*",
-      complete = "shellcmd",
-    }
-  )
+  require("wezterm.commands").setup(wezterm)
 end
 
 ---@private
