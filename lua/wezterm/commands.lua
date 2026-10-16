@@ -95,28 +95,70 @@ local function show_text(wezterm, opts)
     string.format("wezterm://pane/%s/%s", opts.pane_id, buf)
   )
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.cmd("botright split")
+  vim.cmd("tab split")
   vim.api.nvim_win_set_buf(0, buf)
 end
 
-function M.setup(wezterm)
-  vim.api.nvim_create_user_command("WeztermSpawn", function(command)
-    wezterm.spawn(command.fargs[1], {
-      args = vim.list_slice(command.fargs, 2),
-    })
-  end, {
-    nargs = "*",
-    complete = "shellcmd",
-    desc = "Spawn a task in a new WezTerm tab",
-  })
+local function show_snapshot(wezterm, opts)
+  opts.escapes = true
+  -- WezTerm clamps a negative start before the retained history to its top.
+  opts.start_line = opts.start_line or -2147483648
+  local text = wezterm.get_text(opts)
+  if text == nil then
+    return
+  end
 
-  vim.api.nvim_create_user_command("WeztermGetText", function(command)
+  local buf = vim.api.nvim_create_buf(false, true)
+  vim.bo[buf].bufhidden = "wipe"
+  vim.api.nvim_buf_set_name(
+    buf,
+    string.format("wezterm://snapshot/%s/%s", opts.pane_id, buf)
+  )
+  vim.cmd("tab split")
+  local win = vim.api.nvim_get_current_win()
+  vim.api.nvim_win_set_buf(win, buf)
+  -- The renderer reads this limit when the terminal is created.
+  vim.bo[buf].scrollback = 100000
+  local channel = vim.api.nvim_open_term(buf, {})
+  -- Apply these after TermOpen, which resets terminal window options.
+  vim.bo[buf].scrollback = 100000
+  vim.wo[win].number = true
+  vim.wo[win].relativenumber = false
+  vim.wo[win].wrap = false
+  vim.keymap.set("n", "q", function()
+    vim.cmd("close")
+    -- Terminal buffers can survive closing the last window of a tab.
+    if vim.api.nvim_buf_is_valid(buf) then
+      vim.api.nvim_buf_delete(buf, { force = true })
+    end
+  end, { buffer = buf, silent = true })
+  vim.keymap.set("t", "<Esc>", [[<C-\><C-N>]], { buffer = buf })
+  vim.api.nvim_chan_send(channel, text)
+  vim.cmd("stopinsert")
+
+  -- Terminal output is applied asynchronously. Start at the latest output
+  -- once it has reached the buffer, without moving to a different window.
+  vim.schedule(function()
+    if vim.api.nvim_win_is_valid(win)
+      and vim.api.nvim_win_get_buf(win) == buf
+    then
+      vim.api.nvim_win_set_cursor(
+        win,
+        { vim.api.nvim_buf_line_count(buf), 0 }
+      )
+      vim.bo[buf].modified = false
+    end
+  end)
+end
+
+local function capture_command(wezterm, name, show, description)
+  vim.api.nvim_create_user_command(name, function(command)
     local opts = parse_get_text(command.fargs)
     if not opts then
       return
     end
     if opts.pane_id ~= nil then
-      show_text(wezterm, opts)
+      show(wezterm, opts)
       return
     end
 
@@ -131,7 +173,7 @@ function M.setup(wezterm)
     select_pane(panes, function(pane)
       if pane then
         opts.pane_id = pane.pane_id
-        show_text(wezterm, opts)
+        show(wezterm, opts)
       end
     end)
   end, {
@@ -141,8 +183,33 @@ function M.setup(wezterm)
         return vim.startswith(option, arglead)
       end, { "pane_id=", "start_line=" })
     end,
-    desc = "Read a WezTerm pane into a scratch buffer",
+    desc = description,
   })
+end
+
+function M.setup(wezterm)
+  vim.api.nvim_create_user_command("WeztermSpawn", function(command)
+    wezterm.spawn(command.fargs[1], {
+      args = vim.list_slice(command.fargs, 2),
+    })
+  end, {
+    nargs = "*",
+    complete = "shellcmd",
+    desc = "Spawn a task in a new WezTerm tab",
+  })
+
+  capture_command(
+    wezterm,
+    "WeztermGetText",
+    show_text,
+    "Read a WezTerm pane into a scratch buffer"
+  )
+  capture_command(
+    wezterm,
+    "WeztermSnapshot",
+    show_snapshot,
+    "Browse a colored WezTerm scrollback snapshot with line numbers"
+  )
 end
 
 return M

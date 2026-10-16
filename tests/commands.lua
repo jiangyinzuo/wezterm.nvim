@@ -22,6 +22,7 @@ local wezterm = require("wezterm")
 assert(wezterm.setup({ create_commands = false }))
 equal(vim.fn.exists(":WeztermGetText"), 0)
 equal(vim.fn.exists(":WeztermSpawn"), 0)
+equal(vim.fn.exists(":WeztermSnapshot"), 0)
 
 local process_args
 local response = { code = 0, stdout = "output\n", stderr = "" }
@@ -82,14 +83,22 @@ equal(vim.fn.getcompletion("WeztermGetText sta", "cmdline"), {
   "start_line=",
 })
 
+local original_tab = vim.api.nvim_get_current_tabpage()
+local original_win = vim.api.nvim_get_current_win()
 local function close_output()
   local buf = vim.api.nvim_get_current_buf()
+  equal(#vim.api.nvim_list_tabpages(), 2)
+  assert(vim.api.nvim_get_current_tabpage() ~= original_tab)
+  equal(vim.api.nvim_tabpage_list_wins(original_tab), { original_win })
+  equal(#vim.api.nvim_tabpage_list_wins(0), 1)
   equal(vim.bo[buf].buftype, "nofile")
   equal(vim.bo[buf].bufhidden, "wipe")
   assert(not vim.bo[buf].swapfile)
   assert(vim.api.nvim_buf_get_name(buf):match("^wezterm://pane/"))
   vim.cmd("close")
   assert(not vim.api.nvim_buf_is_valid(buf))
+  equal(vim.api.nvim_get_current_tabpage(), original_tab)
+  equal(#vim.api.nvim_list_tabpages(), 1)
 end
 
 vim.cmd("WeztermGetText start_line=-200 pane_id=0")

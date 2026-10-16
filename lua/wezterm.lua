@@ -7,7 +7,7 @@
 ---    default program (usually a shell).
 ---
 ---:WeztermGetText [pane_id={id}] [start_line={line}]             *:WeztermGetText*
----    Open pane text in a scratch split. Without pane_id, select a pane using
+---    Open pane text in a new Neovim tab. Without pane_id, select a pane using
 ---    Telescope when available, otherwise vim.ui.select. Cancel to do nothing.
 ---    start_line defaults to 0 (the terminal screen); negative values include
 ---    scrollback. Pane IDs must be non-negative integers.
@@ -15,7 +15,26 @@
 ---    :WeztermGetText pane_id=3 start_line=-200
 ---    :WeztermGetText start_line=-200
 ---<
----    Set create_commands=false in setup() to disable both commands.
+---:WeztermSnapshot [pane_id={id}] [start_line={line}]           *:WeztermSnapshot*
+---    Open a colored scrollback snapshot in a new Neovim tab with line
+---    numbers. Select a pane with the same picker as WeztermGetText. By default
+---    include all retained scrollback; start_line=0 captures only the screen.
+---    ANSI colors and styles are rendered, not inserted as literal text.
+--->
+---    :WeztermSnapshot
+---    :WeztermSnapshot pane_id=3
+---    :WeztermSnapshot pane_id=3 start_line=-200
+---<
+---    Browse in Normal mode: 123G or :123 to jump, / to search, ma to mark,
+---    'a to return, :marks to list marks, q to close. If you enter Terminal
+---    mode, press Esc to return to Normal mode. Closing wipes the snapshot.
+---    This is a static snapshot; line numbers and marks refer to that buffer.
+---    Long lines may wrap during terminal rendering to fit the window width.
+---    Indexed ANSI colors use Neovim's terminal palette (terminal_color_0..15);
+---    truecolor sequences retain their RGB values. Requires WezTerm's
+---    get-text --escapes support. At most 100,000 scrollback lines are kept.
+---
+---    Set create_commands=false in setup() to disable all user commands.
 
 local fmt = string.format
 
