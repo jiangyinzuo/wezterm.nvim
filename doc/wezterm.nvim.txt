@@ -25,13 +25,14 @@ USER COMMANDS                                              *wezterm-commands*
     :WeztermSnapshot pane_id=3 start_line=-200
 <
     Browse in Normal mode: 123G or :123 to jump, / to search, ma to mark,
-    'a to return, :marks to list marks, q to close. If you enter Terminal
-    mode, press Esc to return to Normal mode. Closing wipes the snapshot.
+    'a to return, :marks to list marks, q to close.
+    zh/zl or zH/zL to scroll horizontally. Closing wipes the snapshot.
     This is a static snapshot; line numbers and marks refer to that buffer.
-    Long lines may wrap during terminal rendering to fit the window width.
+    The snapshot is a read-only text buffer with ANSI highlights and nowrap.
+    Long lines stay intact on resize; existing exported line breaks remain.
     Indexed ANSI colors use Neovim's terminal palette (terminal_color_0..15);
     truecolor sequences retain their RGB values. Requires WezTerm's
-    get-text --escapes support. At most 100,000 scrollback lines are kept.
+    get-text --escapes support. No terminal scrollback limit is applied.
 
     Set create_commands=false in setup() to disable all user commands.
 

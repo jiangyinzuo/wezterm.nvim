@@ -38,7 +38,8 @@ local function close_snapshot()
   assert(vim.api.nvim_get_current_tabpage() ~= original_tab)
   equal(vim.api.nvim_tabpage_list_wins(original_tab), { original_win })
   equal(#vim.api.nvim_tabpage_list_wins(0), 1)
-  equal(vim.bo[buf].buftype, "terminal")
+  equal(vim.bo[buf].buftype, "nofile")
+  assert(vim.bo[buf].readonly and not vim.bo[buf].modifiable)
   equal(vim.bo[buf].bufhidden, "wipe")
   assert(not vim.bo[buf].swapfile)
   assert(vim.api.nvim_buf_get_name(buf):match("^wezterm://snapshot/"))
@@ -48,8 +49,8 @@ local function close_snapshot()
   equal(#vim.api.nvim_list_tabpages(), 1)
 end
 
--- TermOpen user settings must not put the snapshot in Terminal mode or hide
--- its line numbers. CRLF, CJK, colon-form RGB, and blank rows are rendered.
+-- Terminal settings must not affect this read-only text snapshot.
+-- CRLF, CJK, colon-form RGB, and blank rows are rendered.
 vim.api.nvim_create_autocmd("TermOpen", {
   callback = function()
     vim.wo.number = false
@@ -77,7 +78,21 @@ local rendered = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false))
 assert(not rendered:find("\27"))
 close_snapshot()
 
--- Retain history beyond Neovim's default 10,000 terminal scrollback lines.
+-- Long colored lines stay intact after opening splits or resizing the window.
+local long_line = string.rep("长行 abc ", 200) .. "END"
+output = "\27[38;2;18;52;86m" .. long_line .. "\27[0m\r\nnext\n"
+vim.cmd("WeztermSnapshot pane_id=7")
+equal(vim.api.nvim_buf_get_lines(0, 0, -1, false), { long_line, "next" })
+assert(not vim.wo.wrap)
+vim.cmd("normal! gg$")
+assert(vim.fn.winsaveview().leftcol > 0)
+local snapshot_buf = vim.api.nvim_get_current_buf()
+vim.cmd("vsplit")
+equal(vim.api.nvim_buf_get_lines(snapshot_buf, 0, -1, false), { long_line, "next" })
+vim.cmd("close")
+close_snapshot()
+
+-- Retain large history without a terminal scrollback limit.
 local history = {}
 for i = 1, 12050 do history[i] = "line " .. i end
 output = table.concat(history, "\n") .. "\nEND"
@@ -105,7 +120,7 @@ assert(#notifications > 0)
 output = ""
 vim.cmd("WeztermSnapshot pane_id=7 start_line=0")
 equal(reads[#reads], { pane_id = 7, start_line = 0, escapes = true })
-equal(vim.bo.buftype, "terminal")
+equal(vim.bo.buftype, "nofile")
 close_snapshot()
 
 -- Use the shared picker, including cancellation and explicit screen capture.
@@ -131,15 +146,17 @@ close_snapshot()
 -- This verifies actual color attributes, not just stripped escape sequences.
 local code = [[
   vim.opt.runtimepath:prepend(vim.fn.getcwd())
+  local prefix = string.rep('长行 ', 200)
   require('wezterm.commands').setup({get_text = function()
-    return '\27[38:2::18:52:86mRGB\27[0m\r\n'
+    return prefix .. '\27[38:2::18:52:86mRGB\27[0m\r\n'
   end})
   vim.cmd('WeztermSnapshot pane_id=7 start_line=0')
   assert(vim.wait(2000, function()
-    return vim.api.nvim_buf_get_lines(0, 0, 1, false)[1] == 'RGB'
+    return vim.api.nvim_buf_get_lines(0, 0, 1, false)[1] == prefix .. 'RGB'
   end))
+  vim.api.nvim_win_set_cursor(0, {1, #prefix})
   vim.cmd('redraw')
-  local position = vim.fn.screenpos(0, 1, 1)
+  local position = vim.fn.screenpos(0, 1, #prefix + 1)
   local cell = vim.api.nvim__inspect_cell(
     1, position.row - 1, position.col - 1
   )
@@ -167,5 +184,5 @@ end
 assert(cell, "No RGB UI response")
 equal(cell[1], "R")
 equal(cell[2].foreground, 0x123456)
-print("PASS: snapshot capture, ANSI/RGB rendering, CJK, blank lines, "
+print("PASS: snapshot capture, ANSI/RGB rendering, CJK, blank lines, long lines, "
   .. "large history, line jumps, marks, cleanup, and pane selection")

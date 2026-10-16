@@ -114,41 +114,24 @@ local function show_snapshot(wezterm, opts)
     buf,
     string.format("wezterm://snapshot/%s/%s", opts.pane_id, buf)
   )
+  require("wezterm.ansi").render(buf, text)
+  vim.bo[buf].modifiable = false
+  vim.bo[buf].readonly = true
+  vim.bo[buf].modified = false
   vim.cmd("tab split")
   local win = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(win, buf)
-  -- The renderer reads this limit when the terminal is created.
-  vim.bo[buf].scrollback = 100000
-  local channel = vim.api.nvim_open_term(buf, {})
-  -- Apply these after TermOpen, which resets terminal window options.
-  vim.bo[buf].scrollback = 100000
   vim.wo[win].number = true
   vim.wo[win].relativenumber = false
   vim.wo[win].wrap = false
   vim.keymap.set("n", "q", function()
     vim.cmd("close")
-    -- Terminal buffers can survive closing the last window of a tab.
     if vim.api.nvim_buf_is_valid(buf) then
       vim.api.nvim_buf_delete(buf, { force = true })
     end
   end, { buffer = buf, silent = true })
-  vim.keymap.set("t", "<Esc>", [[<C-\><C-N>]], { buffer = buf })
-  vim.api.nvim_chan_send(channel, text)
   vim.cmd("stopinsert")
-
-  -- Terminal output is applied asynchronously. Start at the latest output
-  -- once it has reached the buffer, without moving to a different window.
-  vim.schedule(function()
-    if vim.api.nvim_win_is_valid(win)
-      and vim.api.nvim_win_get_buf(win) == buf
-    then
-      vim.api.nvim_win_set_cursor(
-        win,
-        { vim.api.nvim_buf_line_count(buf), 0 }
-      )
-      vim.bo[buf].modified = false
-    end
-  end)
+  vim.api.nvim_win_set_cursor(win, { vim.api.nvim_buf_line_count(buf), 0 })
 end
 
 local function capture_command(wezterm, name, show, description)
