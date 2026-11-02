@@ -30,6 +30,11 @@ If you don't want the user commands, use
 }
 ```
 
+`setup()` registers the requested commands and returns `true` without searching
+`PATH`. The first CLI operation resolves `wezterm` (preferred) or `wezterm.exe`
+and caches the result. If neither is available, that operation reports an error
+instead of making Neovim startup wait for executable discovery.
+
 ## Usage
 
 For API documentation, see `:h wezterm.nvim` or [`doc/wezterm.nvim.txt`](./doc/wezterm.nvim.txt).

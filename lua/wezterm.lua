@@ -49,6 +49,9 @@ local wezterm = {
 local did_setup = false
 
 ---@private
+local executable_checked = false
+
+---@private
 local wezterm_executable
 
 ---@private
@@ -77,8 +80,20 @@ local function find_wezterm()
     return "wezterm.exe"
   end
 
-  err("find 'wezterm' executable")
   return nil
+end
+
+---@private
+local function ensure_executable()
+  if executable_checked then
+    return wezterm_executable ~= nil
+  end
+  executable_checked = true
+  wezterm_executable = find_wezterm()
+  if not wezterm_executable then
+    err("find 'wezterm' executable")
+  end
+  return wezterm_executable ~= nil
 end
 
 ---@private
@@ -122,7 +137,7 @@ end
 ---@param handler fun(res: vim.SystemObj)
 ---@param stdin string|string[]|boolean If `true`, then a pipe to stdin is opened and can be written to via the `write()` method to SystemObj. If string or string[] then will be written to stdin
 function wezterm.exec(args, handler, stdin)
-  if not wezterm.setup({}) then
+  if not wezterm.setup({}) or not ensure_executable() then
     return
   end
   vim.system({ wezterm_executable, unpack(args) }, {
@@ -137,7 +152,7 @@ end
 ---@return string stdout
 ---@return string stderr
 function wezterm.exec_sync(args)
-  if not wezterm.setup({}) then
+  if not wezterm.setup({}) or not ensure_executable() then
     return false, "", ""
   end
   local rv = vim
@@ -708,10 +723,13 @@ local config = {
   create_commands = true,
 }
 
+---Configure the plugin without searching PATH. Resolve and cache wezterm or
+---wezterm.exe on the first CLI operation; report a missing executable then.
 ---@param opts wezterm.Config
+---@return boolean success Configuration status, not CLI availability.
 function wezterm.setup(opts)
   if did_setup then
-    return wezterm_executable ~= nil
+    return true
   end
   did_setup = true
 
@@ -726,13 +744,6 @@ function wezterm.setup(opts)
       }
     )
   end
-
-  local exe = find_wezterm()
-  if not exe then
-    err("find 'wezterm' executable")
-    return false
-  end
-  wezterm_executable = exe
 
   if opts.create_commands == true then
     wezterm.create_commands()

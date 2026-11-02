@@ -13,13 +13,34 @@ vim.notify = function(message, level)
   table.insert(notifications, { message, level })
 end
 
+-- Missing WezTerm must not break setup; CLI calls fail without spawning a process.
+local path = vim.env.PATH
+vim.env.PATH = ""
+local missing = require("wezterm")
+assert(missing.setup({ create_commands = false }))
+equal(notifications, {})
+local ok, stdout, stderr = missing.exec_sync({ "cli", "list" })
+equal({ ok, stdout, stderr }, { false, "", "" })
+missing.exec({ "cli", "list" }, function()
+  error("A missing executable must not run a process callback")
+end)
+equal(notifications, {
+  { "Wezterm failed to find 'wezterm' executable", vim.log.levels.ERROR },
+})
+package.loaded.wezterm = nil
+notifications = {}
+
+-- WezTerm may become available after setup, before the first CLI operation.
+local wezterm = require("wezterm")
+assert(wezterm.setup({ create_commands = false }))
+equal(notifications, {})
+vim.env.PATH = path
+
 -- Exercise the real get_text and exec_sync without a live WezTerm process.
 local executable = vim.fn.executable
 vim.fn.executable = function(name)
   return name == "wezterm" and 1 or executable(name)
 end
-local wezterm = require("wezterm")
-assert(wezterm.setup({ create_commands = false }))
 equal(vim.fn.exists(":WeztermGetText"), 0)
 equal(vim.fn.exists(":WeztermSpawn"), 0)
 equal(vim.fn.exists(":WeztermSnapshot"), 0)

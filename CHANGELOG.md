@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Performance
+
+* Defer WezTerm executable lookup until the first CLI operation.
+
 ## [0.5.0](https://github.com/willothy/wezterm.nvim/compare/v0.4.0...v0.5.0) (2024-06-01)
 
 
