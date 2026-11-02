@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Features
+
+* Add `hold_on_exit` to keep `WeztermSpawn` task output until Enter, including
+  failed or interrupted tasks, without changing the `spawn()` API.
+
 ### Performance
 
 * Defer WezTerm executable lookup until the first CLI operation.

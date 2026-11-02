@@ -5,6 +5,9 @@
 ---    Spawn a task in a new WezTerm tab. Escape spaces in arguments with a
 ---    backslash, as with other Ex commands. Without arguments, use WezTerm's
 ---    default program (usually a shell).
+---    Set hold_on_exit=true in setup() to run tasks through a POSIX shell,
+---    show their exit code, and wait for Enter before closing the tab. Without
+---    a program, this mode uses $SHELL (or /bin/sh). The spawn() API is unchanged.
 ---
 ---:WeztermGetText [pane_id={id}] [start_line={line}]             *:WeztermGetText*
 ---    Open pane text in a new Neovim tab. Without pane_id, select a pane using
@@ -712,15 +715,18 @@ function wezterm.list_clients()
 end
 
 ---@private
-function wezterm.create_commands()
-  require("wezterm.commands").setup(wezterm)
+---@param opts wezterm.Config|nil
+function wezterm.create_commands(opts)
+  require("wezterm.commands").setup(wezterm, opts)
 end
 
 ---@private
 ---@class wezterm.Config
 ---@field create_commands boolean | nil
+---@field hold_on_exit boolean|nil Keep WeztermSpawn output until Enter (default false; requires sh)
 local config = {
   create_commands = true,
+  hold_on_exit = false,
 }
 
 ---Configure the plugin without searching PATH. Resolve and cache wezterm or
@@ -746,7 +752,7 @@ function wezterm.setup(opts)
   end
 
   if opts.create_commands == true then
-    wezterm.create_commands()
+    wezterm.create_commands(opts)
   end
 
   return true

@@ -1,5 +1,15 @@
 local M = {}
 
+-- Keep task output until confirmation, then let CloseOnCleanExit close the tab.
+local hold = [[
+trap ':' INT
+"$@"
+status=$?
+printf '\n[Process exited with code %s. Press Enter to close.]\n' "$status"
+IFS= read -r answer </dev/tty
+exit 0
+]]
+
 local function notify(message, level)
   vim.notify(message, level or vim.log.levels.ERROR, { title = "Wezterm" })
 end
@@ -170,11 +180,17 @@ local function capture_command(wezterm, name, show, description)
   })
 end
 
-function M.setup(wezterm)
+---@param opts wezterm.Config|nil
+function M.setup(wezterm, opts)
   vim.api.nvim_create_user_command("WeztermSpawn", function(command)
-    wezterm.spawn(command.fargs[1], {
-      args = vim.list_slice(command.fargs, 2),
-    })
+    local program = command.fargs[1]
+    local args = vim.list_slice(command.fargs, 2)
+    if opts and opts.hold_on_exit then
+      local held_args = { "-c", hold, "wezterm-spawn", program or vim.env.SHELL or "/bin/sh" }
+      vim.list_extend(held_args, args)
+      program, args = "sh", held_args
+    end
+    wezterm.spawn(program, { args = args })
   end, {
     nargs = "*",
     complete = "shellcmd",
